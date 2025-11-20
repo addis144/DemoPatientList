@@ -1,0 +1,64 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use CGI;
+use JSON::PP;
+use FindBin;
+use lib $FindBin::Bin;
+use HL7Generator;
+
+my $q = CGI->new;
+print $q->header(-type => 'text/plain', -charset => 'UTF-8');
+
+my $patient_id = $q->param('patient_id') // '';
+my $action     = $q->param('action')     // 'A01';
+my $hospital   = $q->param('hospital')   // 'Seattle Grace Hospital';
+
+if ($action !~ /^(A01|A03|A08)$/) {
+    print "Invalid action";
+    exit;
+}
+
+my $patient = _load_patient($patient_id);
+my $hl7 = HL7Generator::build_message({
+    patient  => $patient,
+    action   => $action,
+    hospital => $hospital,
+});
+
+print $hl7;
+
+sub _load_patient {
+    my ($id) = @_;
+    my $dbh = eval { _connect_db() };
+    if ($dbh && $id) {
+        my $sth = $dbh->prepare('SELECT * FROM patients WHERE id = ?');
+        if ($sth && $sth->execute($id)) {
+            my $row = $sth->fetchrow_hashref;
+            return $row if $row;
+        }
+    }
+
+    my %fallback = (
+        id         => $id || 1,
+        mrn        => 'MRN00001',
+        last_name  => 'Smith',
+        first_name => 'John',
+        middle_name => 'A',
+        dob        => '1980-03-14',
+        sex        => 'M',
+        address    => '123 Maple St',
+        city       => 'New York',
+        state      => 'NY',
+        zip        => '10001',
+    );
+
+    return \%fallback;
+}
+
+sub _connect_db {
+    my $dsn = $ENV{PATIENTS_DSN} || 'dbi:Pg:dbname=patients;host=localhost';
+    my $user = $ENV{PATIENTS_DB_USER} || 'postgres';
+    my $pass = $ENV{PATIENTS_DB_PASSWORD} || '';
+    return DBI->connect($dsn, $user, $pass, { RaiseError => 0, PrintError => 0 });
+}
