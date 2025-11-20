@@ -1,0 +1,43 @@
+<mxfile host="app.diagrams.net" modified="2024-01-01T00:00:00.000Z" agent="5.0 (Windows)">
+  <diagram id="hl7-architecture" name="Architecture">
+    <mxGraphModel dx="1238" dy="718" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="spa" value="SPA (HTML/CSS/JS)&lt;br&gt;index.html, main.js, styles.css" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf" vertex="1" parent="1">
+          <mxGeometry x="80" y="180" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="browser" value="User Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366" vertex="1" parent="1">
+          <mxGeometry x="80" y="40" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="apache" value="Apache HTTP Server&lt;br&gt;CGI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656" vertex="1" parent="1">
+          <mxGeometry x="400" y="120" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="getpatients" value="get_patients.cgi - JSON patients" style="shape=note;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6" vertex="1" parent="1">
+          <mxGeometry x="400" y="270" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="generate" value="generate_hl7.cgi&lt;br&gt;HL7Generator.pm" style="shape=note;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6" vertex="1" parent="1">
+          <mxGeometry x="400" y="370" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="db" value="PostgreSQL&lt;br&gt;patients table" style="shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f8cecc;strokeColor=#b85450" vertex="1" parent="1">
+          <mxGeometry x="700" y="230" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="browser_to_spa" value="HTTP GET" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;strokeColor=#6c8ebf" edge="1" parent="1" source="browser" target="spa">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="spa_to_get" value="fetch /get_patients.cgi" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;strokeColor=#9673a6" edge="1" parent="1" source="spa" target="getpatients">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="spa_to_generate" value="POST /generate_hl7.cgi" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;strokeColor=#9673a6" edge="1" parent="1" source="spa" target="generate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="get_to_db" value="SELECT patients" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;strokeColor=#b85450" edge="1" parent="1" source="getpatients" target="db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="generate_to_db" value="Load patient" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;strokeColor=#b85450" edge="1" parent="1" source="generate" target="db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

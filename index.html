@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HL7 ADT SPA</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>HL7 ADT Generator</h1>
+    <p>Select a patient, hospital, and action to generate an HL7 ADT message.</p>
+  </header>
+
+  <main>
+    <section class="table-wrapper">
+      <div class="table-header">
+        <h2>Patient List</h2>
+        <button id="reload-btn" aria-label="Reload patient list">Reload</button>
+      </div>
+      <div class="table-container">
+        <table id="patient-table" aria-describedby="table-help">
+          <thead>
+            <tr>
+              <th scope="col">Patient Name</th>
+              <th scope="col">MRN</th>
+              <th scope="col">Select Hospital</th>
+              <th scope="col">Action</th>
+              <th scope="col">Send</th>
+            </tr>
+          </thead>
+          <tbody id="patient-table-body">
+            <tr>
+              <td colspan="5" class="empty">Loading patients...</td>
+            </tr>
+          </tbody>
+        </table>
+        <p id="table-help" class="sr-only">Use the Send button on each row to generate an HL7 message.</p>
+      </div>
+    </section>
+  </main>
+
+  <section id="modal" class="modal" aria-modal="true" role="dialog" aria-labelledby="modal-title" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Generated HL7 Message</h3>
+        <button id="modal-close" aria-label="Close">×</button>
+      </div>
+      <pre id="modal-body" class="hl7-output"></pre>
+      <div class="modal-footer">
+        <button id="modal-close-footer">Close</button>
+      </div>
+    </div>
+  </section>
+
+  <template id="row-template">
+    <tr>
+      <td class="patient-name"></td>
+      <td class="patient-mrn"></td>
+      <td>
+        <select class="hospital-select">
+          <option value="Seattle Grace Hospital">Seattle Grace Hospital</option>
+          <option value="St. Eligius Elsewhare">St. Eligius Elsewhare</option>
+          <option value="Princeton Plainsboro House">Princeton Plainsboro House</option>
+        </select>
+      </td>
+      <td class="action-cell">
+        <label><input type="radio" name="action-__ID__" value="A01" checked> Admit</label>
+        <label><input type="radio" name="action-__ID__" value="A08"> Update Demo</label>
+        <label><input type="radio" name="action-__ID__" value="A03"> Discharge</label>
+      </td>
+      <td><button class="send-btn">Send</button></td>
+    </tr>
+  </template>
+
+  <script src="main.js"></script>
+</body>
+</html>
