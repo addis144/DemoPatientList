@@ -29,8 +29,9 @@ if (!@$patients) {
 print encode_json({ patients => $patients });
 
 sub _connect_db {
-    my $dsn = $ENV{PATIENTS_DSN} || 'dbi:Pg:dbname=patients;host=localhost';
-    my $user = $ENV{PATIENTS_DB_USER} || 'postgres';
-    my $pass = $ENV{PATIENTS_DB_PASSWORD} || '';
-    return DBI->connect($dsn, $user, $pass, { RaiseError => 0, PrintError => 0 });
+    # Peer authentication: local socket, no password
+    my $dsn = 'dbi:Pg:dbname=mirth_db';
+    my $user = 'src';
+    return DBI->connect($dsn, $user, undef, { RaiseError => 0, PrintError => 0 });
 }
+

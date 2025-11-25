@@ -6,6 +6,8 @@ use JSON::PP;
 use FindBin;
 use lib $FindBin::Bin;
 use HL7Generator;
+use CGI::Carp qw(fatalsToBrowser warningsToBrowser);
+warningsToBrowser(1);
 
 my $q = CGI->new;
 print $q->header(-type => 'text/plain', -charset => 'UTF-8');
@@ -52,13 +54,14 @@ sub _load_patient {
         state      => 'NY',
         zip        => '10001',
     );
-
+warn "DEBUG: \$dbh = $dbh, DBI->errstr = " . DBI->errstr;
     return \%fallback;
 }
 
 sub _connect_db {
-    my $dsn = $ENV{PATIENTS_DSN} || 'dbi:Pg:dbname=patients;host=localhost';
-    my $user = $ENV{PATIENTS_DB_USER} || 'postgres';
-    my $pass = $ENV{PATIENTS_DB_PASSWORD} || '';
-    return DBI->connect($dsn, $user, $pass, { RaiseError => 0, PrintError => 0 });
+    # Peer authentication: local socket, no password
+    my $dsn = 'dbi:Pg:dbname=mirth_db';
+    my $user = 'src';
+    return DBI->connect($dsn, $user, undef, \ RaiseError => 0, PrintError => 0 });
 }
+
