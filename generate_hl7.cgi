@@ -22,13 +22,13 @@ if ($action !~ /^(A01|A03|A08)$/) {
 }
 
 my $patient = _load_patient($patient_id);
-my $hl7 = HL7Generator::build_message({
+my $hl7_message = HL7Generator::build_message({
     patient  => $patient,
     action   => $action,
     hospital => $hospital,
 });
 
-print $hl7;
+print $hl7_message->toString(1);
 
 sub _load_patient {
     my ($id) = @_;
