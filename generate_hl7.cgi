@@ -6,15 +6,18 @@ use JSON::PP;
 use FindBin;
 use lib $FindBin::Bin;
 use HL7Generator;
+use DBI;
 use CGI::Carp qw(fatalsToBrowser warningsToBrowser);
 warningsToBrowser(1);
 
 my $q = CGI->new;
 print $q->header(-type => 'text/plain', -charset => 'UTF-8');
 
-my $patient_id = $q->param('patient_id') // '';
-my $action     = $q->param('action')     // 'A01';
-my $hospital   = $q->param('hospital')   // 'Seattle Grace Hospital';
+my $patient_id     = $q->param('patient_id')     // '';
+my $action         = $q->param('action')         // 'A01';
+my $facility_name  = $q->param('facility_name')  // $q->param('hospital') // 'Seattle Grace Hospital';
+my $facility_code  = $q->param('facility_code')  // '';
+my $sending_id     = $q->param('sending_id')     // '';
 
 if ($action !~ /^(A01|A03|A08)$/) {
     print "Invalid action";
@@ -22,13 +25,15 @@ if ($action !~ /^(A01|A03|A08)$/) {
 }
 
 my $patient = _load_patient($patient_id);
-my $hl7 = HL7Generator::build_message({
+my $hl7_message = HL7Generator::build_message({
     patient  => $patient,
     action   => $action,
-    hospital => $hospital,
+    facility_name => $facility_name,
+    facility_code => $facility_code,
+    sending_id    => $sending_id,
 });
 
-print $hl7;
+print $hl7_message->toString(1);
 
 sub _load_patient {
     my ($id) = @_;
@@ -54,7 +59,7 @@ sub _load_patient {
         state      => 'NY',
         zip        => '10001',
     );
-warn "DEBUG: \$dbh = $dbh, DBI->errstr = " . DBI->errstr;
+
     return \%fallback;
 }
 
@@ -62,6 +67,6 @@ sub _connect_db {
     # Peer authentication: local socket, no password
     my $dsn = 'dbi:Pg:dbname=mirth_db';
     my $user = 'src';
-    return DBI->connect($dsn, $user, undef, \ RaiseError => 0, PrintError => 0 });
+    return DBI->connect($dsn, $user, undef, { RaiseError => 0, PrintError => 0 });
 }
 
