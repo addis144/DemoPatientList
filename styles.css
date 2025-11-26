@@ -102,6 +102,22 @@ main {
   gap: 0.5rem;
 }
 
+#facility-status {
+  margin: 0.35rem 0 0.25rem;
+}
+
+.status-success {
+  color: #15803d;
+}
+
+.status-error {
+  color: #b91c1c;
+}
+
+.status-info {
+  color: var(--muted);
+}
+
 .table-container {
   overflow-x: auto;
 }
