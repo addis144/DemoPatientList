@@ -32,7 +32,15 @@ sub handle_list {
 
 sub handle_save {
     my $body = do { local $/; <STDIN> };
+    # Some servers buffer JSON in POSTDATA instead of STDIN; fall back accordingly
+    $body = $q->param('POSTDATA') unless defined $body && length $body;
+
     my $payload = eval { decode_json($body || '{}') } || {};
+    unless ($payload && ref $payload eq 'HASH') {
+        print $q->header(-status => 400, -type => 'application/json', -charset => 'UTF-8');
+        print encode_json({ error => 'Invalid facility payload' });
+        return;
+    }
     my $facilities = $payload->{facilities};
 
     unless ($facilities && ref $facilities eq 'ARRAY') {
