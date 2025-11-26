@@ -210,6 +210,7 @@ select, button, input[type="radio"] {
 .modal-footer {
   border-top: 1px solid var(--border);
   border-bottom: none;
+  gap: 1rem;
 }
 
 .modal-header h3 {
@@ -228,6 +229,32 @@ select, button, input[type="radio"] {
   color: white;
   border-radius: 4px;
   padding: 0.4rem 0.8rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.primary-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.45rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#modal-status {
+  margin: 0;
+  flex: 1;
 }
 
 .hl7-output {
