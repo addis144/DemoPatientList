@@ -1,0 +1,24 @@
+    {
+      "name": "DemoPatientList Apache and Yarn",
+      "image": "mcr.microsoft.com/devcontainers/universal:latest", // Or a more specific image
+      "features": {
+        "ghcr.io/devcontainers/features/apache:1": {}, // Install Apache
+        "ghcr.io/devcontainers/features/node:1": { // Install Node.js (which includes npm, and often Yarn)
+          "version": "lts" // Or a specific Node.js version
+        }
+      },
+      "postCreateCommand": "sudo apt-get update && sudo apt-get install -y yarn", // Ensure Yarn is installed if not included with Node.js feature
+      "portsAttributes": {
+        "80": { // Configure port forwarding for Apache's default port
+          "label": "Apache Web Server",
+          "onAutoForward": "notify"
+        }
+      },
+      "customizations": {
+        "vscode": {
+          "extensions": [
+            "ms-vscode.live-server" // Optional: for quickly serving static files
+          ]
+        }
+      }
+    }
