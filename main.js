@@ -4,12 +4,37 @@ const modal = document.getElementById('modal');
 const modalBody = document.getElementById('modal-body');
 const closeButtons = [document.getElementById('modal-close'), document.getElementById('modal-close-footer')];
 const reloadBtn = document.getElementById('reload-btn');
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabPanels = document.querySelectorAll('.tab-panel');
+const facilityTableBody = document.getElementById('facility-table-body');
+const addFacilityBtn = document.getElementById('add-facility');
+const resetFacilityBtn = document.getElementById('reset-facility');
+const saveFacilityBtn = document.getElementById('save-facility');
+const facilityStatus = document.getElementById('facility-status');
 
-const hospitals = [
-  'Seattle Grace Hospital',
-  'St. Eligius Elsewhare',
-  'Princeton Plainsboro House',
+const defaultFacilities = [
+  { name: 'Seattle Grace Hospital', code: 'SGH', sendingId: 'SPAAPP' },
+  { name: 'St. Eligius Elsewhare', code: 'SEL', sendingId: 'SPAAPP' },
+  { name: 'Princeton Plainsboro House', code: 'PPH', sendingId: 'SPAAPP' },
 ];
+
+let facilities = defaultFacilities.map((facility) => ({ ...facility }));
+
+function switchTab(tabName) {
+  tabButtons.forEach((btn) => {
+    const isActive = btn.dataset.tab === tabName;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+
+  tabPanels.forEach((panel) => {
+    const isActive = panel.id === `${tabName}-tab`;
+    panel.classList.toggle('active', isActive);
+    panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+  });
+}
+
+tabButtons.forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
 function showModal(message) {
   modalBody.textContent = message;
@@ -20,6 +45,15 @@ function showModal(message) {
 function hideModal() {
   modal.setAttribute('aria-hidden', 'true');
   modal.classList.remove('show');
+}
+
+function setFacilityStatus(message, type = 'info') {
+  if (!facilityStatus) return;
+  facilityStatus.textContent = message || '';
+  facilityStatus.classList.remove('status-success', 'status-error', 'status-info');
+  if (message) {
+    facilityStatus.classList.add(`status-${type}`);
+  }
 }
 
 closeButtons.forEach((btn) => btn.addEventListener('click', hideModal));
@@ -41,6 +75,29 @@ async function fetchPatients() {
   } catch (err) {
     console.error(err);
     renderRows(samplePatients());
+  }
+}
+
+async function loadFacilities() {
+  setFacilityStatus('Loading facilities...', 'info');
+  try {
+    const response = await fetch('facility_map.cgi', { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`Facility request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const incoming = Array.isArray(data.facilities) ? data.facilities : [];
+    facilities = normalizeFacilities(incoming.length ? incoming : defaultFacilities);
+    renderFacilityTable();
+    refreshHospitalOptions();
+    setFacilityStatus('Facilities loaded', 'success');
+  } catch (err) {
+    console.error(err);
+    facilities = defaultFacilities.map((facility) => ({ ...facility }));
+    renderFacilityTable();
+    refreshHospitalOptions();
+    setFacilityStatus('Using default facilities (database unavailable)', 'error');
   }
 }
 
@@ -69,10 +126,23 @@ function renderRows(patients) {
     nameCell.textContent = `${patient.last_name}, ${patient.first_name}`;
     mrnCell.textContent = patient.mrn;
 
+    buildHospitalOptions(select, facilities[0]?.name);
+
     sendBtn.addEventListener('click', async () => {
       const selectedHospital = select.value;
       const selectedAction = [...radios].find((r) => r.checked)?.value || 'A01';
-      await sendRequest({ patientId: patient.id, hospital: selectedHospital, action: selectedAction });
+      const facility = facilities.find((f) => f.name === selectedHospital) || {
+        name: selectedHospital,
+        code: selectedHospital,
+        sendingId: 'SPAAPP',
+      };
+      await sendRequest({
+        patientId: patient.id,
+        action: selectedAction,
+        facilityName: facility.name,
+        facilityCode: facility.code,
+        sendingId: facility.sendingId,
+      });
     });
 
     tableBody.appendChild(clone);
@@ -83,7 +153,9 @@ async function sendRequest(payload) {
   try {
     const params = new URLSearchParams({
       patient_id: String(payload.patientId || ''),
-      hospital: payload.hospital,
+      facility_name: payload.facilityName,
+      facility_code: payload.facilityCode,
+      sending_id: payload.sendingId,
       action: payload.action,
     });
     const response = await fetch('generate_hl7.cgi', {
@@ -114,7 +186,7 @@ function samplePatients() {
 
 function sampleHl7() {
   return [
-    'MSH|^~\\&|SPAAPP|Seattle Grace Hospital|HIS|Seattle Grace Hospital|202511201530||ADT^A01|MSG00001|P|2.5.1',
+    'MSH|^~\\&|SPAAPP|SGH|HIS|SGH|202511201530||ADT^A01|MSG00001|P|2.5.1',
     'EVN|A01|202511201530',
     'PID|1||MRN00001||Smith^John^A||19800314|M|||123 Maple St^^New York^NY^10001',
     'PV1|1|I|ER^^^Seattle Grace Hospital|||||||||||||||||||',
@@ -122,4 +194,112 @@ function sampleHl7() {
 }
 
 reloadBtn.addEventListener('click', fetchPatients);
+
+function normalizeFacilities(list) {
+  return (list || []).map((facility) => ({
+    name: facility.name || '',
+    code: facility.code || '',
+    sendingId: facility.sendingId || facility.sending_id || 'SPAAPP',
+  }));
+}
+
+function buildHospitalOptions(select, selectedValue) {
+  const previous = select.value;
+  select.innerHTML = '';
+  facilities.forEach((facility) => {
+    const option = document.createElement('option');
+    option.value = facility.name;
+    option.textContent = facility.name;
+    select.appendChild(option);
+  });
+
+  const target = facilities.find((f) => f.name === previous) ? previous : selectedValue || facilities[0]?.name;
+  if (target) {
+    select.value = target;
+  }
+}
+
+function renderFacilityTable() {
+  facilityTableBody.innerHTML = '';
+  facilities.forEach((facility, index) => {
+    const row = document.createElement('tr');
+
+    const nameCell = document.createElement('td');
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = facility.name;
+    nameInput.addEventListener('input', (e) => updateFacility(index, 'name', e.target.value));
+    nameCell.appendChild(nameInput);
+
+    const codeCell = document.createElement('td');
+    const codeInput = document.createElement('input');
+    codeInput.type = 'text';
+    codeInput.value = facility.code;
+    codeInput.addEventListener('input', (e) => updateFacility(index, 'code', e.target.value));
+    codeCell.appendChild(codeInput);
+
+    const sendingCell = document.createElement('td');
+    const sendingInput = document.createElement('input');
+    sendingInput.type = 'text';
+    sendingInput.value = facility.sendingId;
+    sendingInput.addEventListener('input', (e) => updateFacility(index, 'sendingId', e.target.value));
+    sendingCell.appendChild(sendingInput);
+
+    row.appendChild(nameCell);
+    row.appendChild(codeCell);
+    row.appendChild(sendingCell);
+
+    facilityTableBody.appendChild(row);
+  });
+
+  refreshHospitalOptions();
+}
+
+function updateFacility(index, field, value) {
+  facilities[index] = { ...facilities[index], [field]: value };
+  refreshHospitalOptions();
+  setFacilityStatus('Unsaved changes', 'info');
+}
+
+function refreshHospitalOptions() {
+  document.querySelectorAll('.hospital-select').forEach((select) => buildHospitalOptions(select, select.value));
+}
+
+addFacilityBtn.addEventListener('click', () => {
+  facilities.push({ name: '', code: '', sendingId: '' });
+  renderFacilityTable();
+  setFacilityStatus('Unsaved changes', 'info');
+});
+
+resetFacilityBtn.addEventListener('click', () => {
+  facilities = defaultFacilities.map((facility) => ({ ...facility }));
+  renderFacilityTable();
+  refreshHospitalOptions();
+  saveFacilities();
+});
+
+saveFacilityBtn.addEventListener('click', saveFacilities);
+
+async function saveFacilities() {
+  setFacilityStatus('Saving facilities...', 'info');
+  try {
+    const response = await fetch('facility_map.cgi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ facilities }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Save failed: ${response.status}`);
+    }
+
+    setFacilityStatus('Facilities saved', 'success');
+  } catch (err) {
+    console.error(err);
+    setFacilityStatus('Failed to save facilities', 'error');
+  }
+}
+
+renderFacilityTable();
+loadFacilities();
 fetchPatients();
