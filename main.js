@@ -2,6 +2,8 @@ const tableBody = document.getElementById('patient-table-body');
 const rowTemplate = document.getElementById('row-template');
 const modal = document.getElementById('modal');
 const modalBody = document.getElementById('modal-body');
+const modalStatus = document.getElementById('modal-status');
+const confirmSendBtn = document.getElementById('confirm-send');
 const closeButtons = [document.getElementById('modal-close'), document.getElementById('modal-close-footer')];
 const reloadBtn = document.getElementById('reload-btn');
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -19,6 +21,7 @@ const defaultFacilities = [
 ];
 
 let facilities = defaultFacilities.map((facility) => ({ ...facility }));
+let latestPreview = null;
 
 function switchTab(tabName) {
   tabButtons.forEach((btn) => {
@@ -36,15 +39,31 @@ function switchTab(tabName) {
 
 tabButtons.forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
-function showModal(message) {
+function setModalStatus(message, type = 'info') {
+  if (!modalStatus) return;
+  modalStatus.textContent = message || '';
+  modalStatus.classList.remove('status-success', 'status-error', 'status-info');
+  if (message) {
+    modalStatus.classList.add(`status-${type}`);
+  }
+}
+
+function showModal(message, meta = {}) {
   modalBody.textContent = message;
   modal.setAttribute('aria-hidden', 'false');
   modal.classList.add('show');
+  latestPreview = { ...meta, hl7_message: message };
+  if (confirmSendBtn) {
+    confirmSendBtn.disabled = false;
+  }
+  setModalStatus('');
 }
 
 function hideModal() {
   modal.setAttribute('aria-hidden', 'true');
   modal.classList.remove('show');
+  latestPreview = null;
+  setModalStatus('');
 }
 
 function setFacilityStatus(message, type = 'info') {
@@ -62,6 +81,10 @@ modal.addEventListener('click', (e) => {
     hideModal();
   }
 });
+
+if (confirmSendBtn) {
+  confirmSendBtn.addEventListener('click', confirmAndSend);
+}
 
 async function fetchPatients() {
   tableBody.innerHTML = '<tr><td colspan="5" class="empty">Loading patients...</td></tr>';
@@ -138,6 +161,7 @@ function renderRows(patients) {
       };
       await sendRequest({
         patientId: patient.id,
+        patientMrn: patient.mrn,
         action: selectedAction,
         facilityName: facility.name,
         facilityCode: facility.code,
@@ -169,10 +193,54 @@ async function sendRequest(payload) {
     }
 
     const text = await response.text();
-    showModal(text);
+    showModal(text, {
+      patientId: payload.patientId,
+      mrn: payload.patientMrn,
+      action: payload.action,
+      hospital: payload.facilityName,
+    });
   } catch (err) {
     console.error(err);
     showModal(`Generation failed. Showing sample message instead.\n\n${sampleHl7()}`);
+  }
+}
+
+async function confirmAndSend() {
+  if (!latestPreview || !modalBody.textContent) {
+    setModalStatus('No HL7 message available to send.', 'error');
+    return;
+  }
+
+  const payload = {
+    hl7_message: modalBody.textContent,
+    patient_id: latestPreview.patientId || '',
+    mrn: latestPreview.mrn || '',
+    action: latestPreview.action || '',
+    hospital: latestPreview.hospital || '',
+  };
+
+  confirmSendBtn.disabled = true;
+  setModalStatus('Sending message...', 'info');
+
+  try {
+    const response = await fetch('write_hl7.cgi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || data.status !== 'success') {
+      throw new Error(data.message || `Request failed: ${response.status}`);
+    }
+
+    setModalStatus('HL7 message written to file successfully.', 'success');
+  } catch (err) {
+    console.error(err);
+    setModalStatus(err.message || 'Failed to write HL7 message.', 'error');
+  } finally {
+    confirmSendBtn.disabled = false;
   }
 }
 
@@ -303,76 +371,3 @@ async function saveFacilities() {
 renderFacilityTable();
 loadFacilities();
 fetchPatients();
-
-function buildHospitalOptions(select, selectedValue) {
-  const previous = select.value;
-  select.innerHTML = '';
-  facilities.forEach((facility) => {
-    const option = document.createElement('option');
-    option.value = facility.name;
-    option.textContent = facility.name;
-    select.appendChild(option);
-  });
-
-  const target = facilities.find((f) => f.name === previous) ? previous : selectedValue || facilities[0]?.name;
-  if (target) {
-    select.value = target;
-  }
-}
-
-function renderFacilityTable() {
-  facilityTableBody.innerHTML = '';
-  facilities.forEach((facility, index) => {
-    const row = document.createElement('tr');
-
-    const nameCell = document.createElement('td');
-    const nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.value = facility.name;
-    nameInput.addEventListener('input', (e) => updateFacility(index, 'name', e.target.value));
-    nameCell.appendChild(nameInput);
-
-    const codeCell = document.createElement('td');
-    const codeInput = document.createElement('input');
-    codeInput.type = 'text';
-    codeInput.value = facility.code;
-    codeInput.addEventListener('input', (e) => updateFacility(index, 'code', e.target.value));
-    codeCell.appendChild(codeInput);
-
-    const sendingCell = document.createElement('td');
-    const sendingInput = document.createElement('input');
-    sendingInput.type = 'text';
-    sendingInput.value = facility.sendingId;
-    sendingInput.addEventListener('input', (e) => updateFacility(index, 'sendingId', e.target.value));
-    sendingCell.appendChild(sendingInput);
-
-    row.appendChild(nameCell);
-    row.appendChild(codeCell);
-    row.appendChild(sendingCell);
-
-    facilityTableBody.appendChild(row);
-  });
-
-  refreshHospitalOptions();
-}
-
-function updateFacility(index, field, value) {
-  facilities[index] = { ...facilities[index], [field]: value };
-  refreshHospitalOptions();
-}
-
-function refreshHospitalOptions() {
-  document.querySelectorAll('.hospital-select').forEach((select) => buildHospitalOptions(select, select.value));
-}
-
-addFacilityBtn.addEventListener('click', () => {
-  facilities.push({ name: '', code: '', sendingId: '' });
-  renderFacilityTable();
-});
-
-resetFacilityBtn.addEventListener('click', () => {
-  facilities = defaultFacilities.map((facility) => ({ ...facility }));
-  renderFacilityTable();
-});
-
-renderFacilityTable();
