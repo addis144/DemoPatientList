@@ -13,7 +13,12 @@
   </header>
 
   <main>
-    <section class="table-wrapper">
+    <div class="tabs" role="tablist" aria-label="HL7 generator navigation">
+      <button class="tab-btn active" data-tab="patients" id="patients-tab-btn" role="tab" aria-selected="true" aria-controls="patients-tab">Patients</button>
+      <button class="tab-btn" data-tab="facility" id="facility-tab-btn" role="tab" aria-selected="false" aria-controls="facility-tab">Facility Map</button>
+    </div>
+
+    <section class="table-wrapper tab-panel active" id="patients-tab" role="tabpanel" aria-labelledby="patients-tab-btn">
       <div class="table-header">
         <h2>Patient List</h2>
         <button id="reload-btn" aria-label="Reload patient list">Reload</button>
@@ -36,6 +41,30 @@
           </tbody>
         </table>
         <p id="table-help" class="sr-only">Use the Send button on each row to generate an HL7 message.</p>
+      </div>
+    </section>
+
+    <section class="table-wrapper tab-panel" id="facility-tab" role="tabpanel" aria-labelledby="facility-tab-btn" aria-hidden="true">
+      <div class="table-header">
+        <h2>Facility Map</h2>
+        <div class="facility-actions">
+          <button id="add-facility" aria-label="Add facility row">Add Facility</button>
+          <button id="reset-facility" aria-label="Reset facilities to defaults">Reset Defaults</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table id="facility-table" aria-describedby="facility-help">
+          <thead>
+            <tr>
+              <th scope="col">Facility Name</th>
+              <th scope="col">Facility Code</th>
+              <th scope="col">Sending ID</th>
+            </tr>
+          </thead>
+          <tbody id="facility-table-body">
+          </tbody>
+        </table>
+        <p id="facility-help" class="muted">Facility code maps to receiving facility (MSH-4 and MSH-6). Sending ID populates MSH-3.</p>
       </div>
     </section>
   </main>

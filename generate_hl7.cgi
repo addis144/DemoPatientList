@@ -12,9 +12,11 @@ warningsToBrowser(1);
 my $q = CGI->new;
 print $q->header(-type => 'text/plain', -charset => 'UTF-8');
 
-my $patient_id = $q->param('patient_id') // '';
-my $action     = $q->param('action')     // 'A01';
-my $hospital   = $q->param('hospital')   // 'Seattle Grace Hospital';
+my $patient_id     = $q->param('patient_id')     // '';
+my $action         = $q->param('action')         // 'A01';
+my $facility_name  = $q->param('facility_name')  // $q->param('hospital') // 'Seattle Grace Hospital';
+my $facility_code  = $q->param('facility_code')  // '';
+my $sending_id     = $q->param('sending_id')     // '';
 
 if ($action !~ /^(A01|A03|A08)$/) {
     print "Invalid action";
@@ -25,7 +27,9 @@ my $patient = _load_patient($patient_id);
 my $hl7_message = HL7Generator::build_message({
     patient  => $patient,
     action   => $action,
-    hospital => $hospital,
+    facility_name => $facility_name,
+    facility_code => $facility_code,
+    sending_id    => $sending_id,
 });
 
 print $hl7_message->toString(1);

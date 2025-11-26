@@ -4,12 +4,35 @@ const modal = document.getElementById('modal');
 const modalBody = document.getElementById('modal-body');
 const closeButtons = [document.getElementById('modal-close'), document.getElementById('modal-close-footer')];
 const reloadBtn = document.getElementById('reload-btn');
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabPanels = document.querySelectorAll('.tab-panel');
+const facilityTableBody = document.getElementById('facility-table-body');
+const addFacilityBtn = document.getElementById('add-facility');
+const resetFacilityBtn = document.getElementById('reset-facility');
 
-const hospitals = [
-  'Seattle Grace Hospital',
-  'St. Eligius Elsewhare',
-  'Princeton Plainsboro House',
+const defaultFacilities = [
+  { name: 'Seattle Grace Hospital', code: 'SGH', sendingId: 'SPAAPP' },
+  { name: 'St. Eligius Elsewhare', code: 'SEL', sendingId: 'SPAAPP' },
+  { name: 'Princeton Plainsboro House', code: 'PPH', sendingId: 'SPAAPP' },
 ];
+
+let facilities = defaultFacilities.map((facility) => ({ ...facility }));
+
+function switchTab(tabName) {
+  tabButtons.forEach((btn) => {
+    const isActive = btn.dataset.tab === tabName;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+
+  tabPanels.forEach((panel) => {
+    const isActive = panel.id === `${tabName}-tab`;
+    panel.classList.toggle('active', isActive);
+    panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+  });
+}
+
+tabButtons.forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
 function showModal(message) {
   modalBody.textContent = message;
@@ -69,10 +92,23 @@ function renderRows(patients) {
     nameCell.textContent = `${patient.last_name}, ${patient.first_name}`;
     mrnCell.textContent = patient.mrn;
 
+    buildHospitalOptions(select, facilities[0]?.name);
+
     sendBtn.addEventListener('click', async () => {
       const selectedHospital = select.value;
       const selectedAction = [...radios].find((r) => r.checked)?.value || 'A01';
-      await sendRequest({ patientId: patient.id, hospital: selectedHospital, action: selectedAction });
+      const facility = facilities.find((f) => f.name === selectedHospital) || {
+        name: selectedHospital,
+        code: selectedHospital,
+        sendingId: 'SPAAPP',
+      };
+      await sendRequest({
+        patientId: patient.id,
+        action: selectedAction,
+        facilityName: facility.name,
+        facilityCode: facility.code,
+        sendingId: facility.sendingId,
+      });
     });
 
     tableBody.appendChild(clone);
@@ -83,7 +119,9 @@ async function sendRequest(payload) {
   try {
     const params = new URLSearchParams({
       patient_id: String(payload.patientId || ''),
-      hospital: payload.hospital,
+      facility_name: payload.facilityName,
+      facility_code: payload.facilityCode,
+      sending_id: payload.sendingId,
       action: payload.action,
     });
     const response = await fetch('generate_hl7.cgi', {
@@ -114,7 +152,7 @@ function samplePatients() {
 
 function sampleHl7() {
   return [
-    'MSH|^~\\&|SPAAPP|Seattle Grace Hospital|HIS|Seattle Grace Hospital|202511201530||ADT^A01|MSG00001|P|2.5.1',
+    'MSH|^~\\&|SPAAPP|SGH|HIS|SGH|202511201530||ADT^A01|MSG00001|P|2.5.1',
     'EVN|A01|202511201530',
     'PID|1||MRN00001||Smith^John^A||19800314|M|||123 Maple St^^New York^NY^10001',
     'PV1|1|I|ER^^^Seattle Grace Hospital|||||||||||||||||||',
@@ -123,3 +161,76 @@ function sampleHl7() {
 
 reloadBtn.addEventListener('click', fetchPatients);
 fetchPatients();
+
+function buildHospitalOptions(select, selectedValue) {
+  const previous = select.value;
+  select.innerHTML = '';
+  facilities.forEach((facility) => {
+    const option = document.createElement('option');
+    option.value = facility.name;
+    option.textContent = facility.name;
+    select.appendChild(option);
+  });
+
+  const target = facilities.find((f) => f.name === previous) ? previous : selectedValue || facilities[0]?.name;
+  if (target) {
+    select.value = target;
+  }
+}
+
+function renderFacilityTable() {
+  facilityTableBody.innerHTML = '';
+  facilities.forEach((facility, index) => {
+    const row = document.createElement('tr');
+
+    const nameCell = document.createElement('td');
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = facility.name;
+    nameInput.addEventListener('input', (e) => updateFacility(index, 'name', e.target.value));
+    nameCell.appendChild(nameInput);
+
+    const codeCell = document.createElement('td');
+    const codeInput = document.createElement('input');
+    codeInput.type = 'text';
+    codeInput.value = facility.code;
+    codeInput.addEventListener('input', (e) => updateFacility(index, 'code', e.target.value));
+    codeCell.appendChild(codeInput);
+
+    const sendingCell = document.createElement('td');
+    const sendingInput = document.createElement('input');
+    sendingInput.type = 'text';
+    sendingInput.value = facility.sendingId;
+    sendingInput.addEventListener('input', (e) => updateFacility(index, 'sendingId', e.target.value));
+    sendingCell.appendChild(sendingInput);
+
+    row.appendChild(nameCell);
+    row.appendChild(codeCell);
+    row.appendChild(sendingCell);
+
+    facilityTableBody.appendChild(row);
+  });
+
+  refreshHospitalOptions();
+}
+
+function updateFacility(index, field, value) {
+  facilities[index] = { ...facilities[index], [field]: value };
+  refreshHospitalOptions();
+}
+
+function refreshHospitalOptions() {
+  document.querySelectorAll('.hospital-select').forEach((select) => buildHospitalOptions(select, select.value));
+}
+
+addFacilityBtn.addEventListener('click', () => {
+  facilities.push({ name: '', code: '', sendingId: '' });
+  renderFacilityTable();
+});
+
+resetFacilityBtn.addEventListener('click', () => {
+  facilities = defaultFacilities.map((facility) => ({ ...facility }));
+  renderFacilityTable();
+});
+
+renderFacilityTable();
