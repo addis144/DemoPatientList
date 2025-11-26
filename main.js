@@ -303,3 +303,76 @@ async function saveFacilities() {
 renderFacilityTable();
 loadFacilities();
 fetchPatients();
+
+function buildHospitalOptions(select, selectedValue) {
+  const previous = select.value;
+  select.innerHTML = '';
+  facilities.forEach((facility) => {
+    const option = document.createElement('option');
+    option.value = facility.name;
+    option.textContent = facility.name;
+    select.appendChild(option);
+  });
+
+  const target = facilities.find((f) => f.name === previous) ? previous : selectedValue || facilities[0]?.name;
+  if (target) {
+    select.value = target;
+  }
+}
+
+function renderFacilityTable() {
+  facilityTableBody.innerHTML = '';
+  facilities.forEach((facility, index) => {
+    const row = document.createElement('tr');
+
+    const nameCell = document.createElement('td');
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = facility.name;
+    nameInput.addEventListener('input', (e) => updateFacility(index, 'name', e.target.value));
+    nameCell.appendChild(nameInput);
+
+    const codeCell = document.createElement('td');
+    const codeInput = document.createElement('input');
+    codeInput.type = 'text';
+    codeInput.value = facility.code;
+    codeInput.addEventListener('input', (e) => updateFacility(index, 'code', e.target.value));
+    codeCell.appendChild(codeInput);
+
+    const sendingCell = document.createElement('td');
+    const sendingInput = document.createElement('input');
+    sendingInput.type = 'text';
+    sendingInput.value = facility.sendingId;
+    sendingInput.addEventListener('input', (e) => updateFacility(index, 'sendingId', e.target.value));
+    sendingCell.appendChild(sendingInput);
+
+    row.appendChild(nameCell);
+    row.appendChild(codeCell);
+    row.appendChild(sendingCell);
+
+    facilityTableBody.appendChild(row);
+  });
+
+  refreshHospitalOptions();
+}
+
+function updateFacility(index, field, value) {
+  facilities[index] = { ...facilities[index], [field]: value };
+  refreshHospitalOptions();
+}
+
+function refreshHospitalOptions() {
+  document.querySelectorAll('.hospital-select').forEach((select) => buildHospitalOptions(select, select.value));
+}
+
+addFacilityBtn.addEventListener('click', () => {
+  facilities.push({ name: '', code: '', sendingId: '' });
+  renderFacilityTable();
+});
+
+resetFacilityBtn.addEventListener('click', () => {
+  facilities = defaultFacilities.map((facility) => ({ ...facility }));
+  renderFacilityTable();
+});
+
+renderFacilityTable();
